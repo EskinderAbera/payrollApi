@@ -85,51 +85,51 @@ exports.protectUser = async (req, res, next) => {
 };
 
 //Verification
-exports.protect = async (req, res, next) => {
-  try {
-    //getting token check if its there
-    let token;
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    } else if (req.cookies.jwt) {
-      token = req.cookies.jwt;
-    }
-    if (!token || token === "expiredtoken") {
-      return res.status(401).json({
-        message: "You are not logged in, please log in to get access",
-      });
-    }
-    //console.log(token);
-    //console.log(process.env.JWT_CODE);
-    //verification token
-    const decoded = await promisify(jwt.verify)(token, process.env.JWT_CODE);
+// exports.protect = async (req, res, next) => {
+//   try {
+//     //getting token check if its there
+//     let token;
+//     if (
+//       req.headers.authorization &&
+//       req.headers.authorization.startsWith("Bearer")
+//     ) {
+//       token = req.headers.authorization.split(" ")[1];
+//     } else if (req.cookies.jwt) {
+//       token = req.cookies.jwt;
+//     }
+//     if (!token || token === "expiredtoken") {
+//       return res.status(401).json({
+//         message: "You are not logged in, please log in to get access",
+//       });
+//     }
+//     //console.log(token);
+//     //console.log(process.env.JWT_CODE);
+//     //verification token
+//     const decoded = await promisify(jwt.verify)(token, process.env.JWT_CODE);
 
-    //check if user still exists
-    const currentUser = await User.findById(decoded.id);
+//     //check if user still exists
+//     const currentUser = await User.findById(decoded.id);
 
-    if (!currentUser) {
-      return res.status(401).json({ message: "user does not longer exists" });
-    }
-    //check if user change password after jwt was issued
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      return res.status(401).json({
-        message: "user recently changed password! please log in again.",
-      });
-    }
-    //grant access to protected route
-    req.user = currentUser;
+//     if (!currentUser) {
+//       return res.status(401).json({ message: "user does not longer exists" });
+//     }
+//     //check if user change password after jwt was issued
+//     if (currentUser.changedPasswordAfter(decoded.iat)) {
+//       return res.status(401).json({
+//         message: "user recently changed password! please log in again.",
+//       });
+//     }
+//     //grant access to protected route
+//     req.user = currentUser;
 
-    next();
-  } catch (err) {
-    res.status(404).json({
-      status: "Error occured",
-      message: err,
-    });
-  }
-};
+//     next();
+//   } catch (err) {
+//     res.status(404).json({
+//       status: "Error occured",
+//       message: err,
+//     });
+//   }
+// };
 
 //Verification
 exports.protect = async (req, res, next) => {
@@ -159,7 +159,7 @@ exports.protect = async (req, res, next) => {
     currentUser = await User.findById(decoded.id);
 
     if (!currentUser) {
-      currentUser = await Employee.findById(decoded.id);
+      currentUser = await Employee.findById(decoded.id).populate("customRole");
       if (!currentUser)
         return res.status(401).json({ message: "user does not longer exists" });
     }
@@ -171,7 +171,6 @@ exports.protect = async (req, res, next) => {
     }
     //grant access to protected route
     req.user = currentUser;
-
     next();
   } catch (err) {
     res.status(404).json({
@@ -184,17 +183,22 @@ exports.protect = async (req, res, next) => {
 //Restricted to
 exports.restrictTo = (roles) => {
   return async (req, res, next) => {
-    let user;
-    user = await User.findById({ _id: req.user._id });
-    if (!user) {
-      user = await Employee.findById({ _id: req.user._id }).populate(
-        "customRole"
-      );
-    }
-    if (user.role === "Companyadmin") {
+    // console.log("employee user", JSON.stringify(req.user, null, 3));
+    // let user;
+    // user = await User.findById({ _id: req.user._id });
+
+    // if (!user) {
+    //   user = await Employee.findById({ _id: req.user._id }).populate(
+    //     "customRole"
+    //   );
+    // }
+
+    // console.log("user", req.user.companyId);
+
+    if (req.user.role === "Companyadmin") {
       next();
     } else {
-      const permissions = user.customRole[0].permissions.find(
+      const permissions = req.user.customRole[0].permissions.find(
         (per) => per.module === Object.keys(roles).toString()
       );
       if (permissions[Object.values(roles)]) {
