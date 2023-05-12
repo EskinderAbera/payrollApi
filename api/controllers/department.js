@@ -22,9 +22,11 @@ exports.add_dept = async (req, res) => {
          
             console.log(req.body);
 
-            res.status(200).json({ newDept });
+            res.status(200).json({ 
+                message:"Success",                
+                newDept });
         } else {
-
+                 
             res.status(404).json('The department already exists');
         }
     } catch (err) {
